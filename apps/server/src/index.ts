@@ -14,22 +14,34 @@ const io = new Server(server, {
 
 app.use(cors());
 
-// ✅ Handle HTTP GET Request
 app.get("/", (req, res) => {
-  res.send("🔥 WebSocket server is running!");
+  res.send("🔥 WebSocket server with rooms is running!");
 });
 
 io.on("connection", (socket) => {
-  console.log("✅ A user connected");
+  console.log("✅ A user connected:", socket.id);
 
-  // Listen for "chat message" from client
-  socket.on("chat message", (msg) => {
-    console.log("📩 Received message:", msg);
-    io.emit("chat message", msg); // Broadcast message to all clients
+  // ✅ Join Room
+  socket.on("join room", (room) => {
+    socket.join(room);
+    console.log(`📌 User ${socket.id} joined room: ${room}`);
+    socket.emit("room joined", room); // Notify client
+  });
+
+  // ✅ Listen for messages in a room
+  socket.on("chat message", ({ room, message }) => {
+    console.log(`📩 Message in Room ${room}:`, message);
+    io.to(room).emit("chat message", message); // Send message only to users in the same room
+  });
+
+  // ✅ Leave Room
+  socket.on("leave room", (room) => {
+    socket.leave(room);
+    console.log(`🚪 User ${socket.id} left room: ${room}`);
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected");
+    console.log("❌ User disconnected:", socket.id);
   });
 });
 

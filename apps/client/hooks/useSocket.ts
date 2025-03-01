@@ -1,29 +1,44 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 
-const SERVER_URL = "http://localhost:4000";
+const SOCKET_SERVER_URL = "http://localhost:4000";
 
-export const useSocket = () => {
+export function useSocket(room: string) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
 
   useEffect(() => {
-    const newSocket = io(SERVER_URL);
+    // ✅ Connect to Socket.IO server
+    const newSocket = io(SOCKET_SERVER_URL);
     setSocket(newSocket);
 
-    newSocket.on("connect", () => {
-      console.log("✅ Connected to WebSocket Server");
-    });
+    // ✅ Join the specified room
+    if (room) {
+      newSocket.emit("join room", room);
+      console.log(`📌 Joined room: ${room}`);
+    }
 
-    newSocket.on("chat message", (msg) => {
-      console.log("📩 Message received:", msg);
-      setMessages((prev) => [...prev, msg]);
+    // ✅ Listen for incoming messages
+    newSocket.on("chat message", (message) => {
+      setMessages((prev) => [...prev, message]);
     });
 
     return () => {
+      // ✅ Leave the room when component unmounts
+      if (room) {
+        newSocket.emit("leave room", room);
+        console.log(`🚪 Left room: ${room}`);
+      }
       newSocket.disconnect();
     };
-  }, []);
+  }, [room]);
 
-  return { socket, messages };
-};
+  // ✅ Function to send messages
+  const sendMessage = (message: string) => {
+    if (socket && room) {
+      socket.emit("chat message", { room, message });
+    }
+  };
+
+  return { messages, sendMessage };
+}
