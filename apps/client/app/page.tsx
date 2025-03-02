@@ -1,50 +1,60 @@
-"use client"
+"use client";
 import { useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 
-export default function Home() {
-  const [room, setRoom] = useState("");
-  const [joined, setJoined] = useState(false);
-  const { messages, sendMessage } = useSocket(joined ? room : "");
+export default function ChatPage() {
+  const [room, setRoom] = useState("general");
+  const { messages, sendMessage, isConnected } = useSocket(room);
+  const [input, setInput] = useState("");
 
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
-      <h1>🔥 Chat with Rooms</h1>
+    <div className="flex flex-col items-center p-6 space-y-4">
+      <h1 className="text-2xl font-bold">💬 Chat Room: {room}</h1>
+      <p className={`text-sm ${isConnected ? "text-green-500" : "text-red-500"}`}>
+        {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+      </p>
 
-      {!joined ? (
-        <div>
-          <input
-            type="text"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            placeholder="Enter room name"
-          />
-          <button onClick={() => setJoined(true)}>Join Room</button>
-        </div>
-      ) : (
-        <div>
-          <h2>Room: {room}</h2>
-          <button onClick={() => setJoined(false)}>Leave Room</button>
+      <input
+        type="text"
+        placeholder="Enter Room Name"
+        className="p-2 border rounded"
+        value={room}
+        onChange={(e) => setRoom(e.target.value)}
+      />
 
-          <input
-            type="text"
-            placeholder="Type a message..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                sendMessage(e.currentTarget.value);
-                e.currentTarget.value = "";
-              }
-            }}
-          />
+      <div className="w-96 h-64 border p-4 overflow-auto">
+        {messages.map((msg, index) => (
+          <p key={index} className={msg.sender === "system" ? "text-gray-500" : "text-black"}>
+            <strong>{msg.sender === "system" ? "[System]" : msg.sender}:</strong> {msg.message}
+          </p>
+        ))}
+      </div>
 
-          <h2>Messages:</h2>
-          <ul>
-            {messages.map((msg, index) => (
-              <li key={index}>{msg}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <input
+        type="text"
+        placeholder="Type a message..."
+        className="p-2 border rounded w-96"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && input.trim() !== "") {
+            sendMessage(input);
+            setInput("");
+          }
+        }}
+      />
+
+      <button
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+        onClick={() => {
+          if (input.trim() !== "") {
+            sendMessage(input);
+            setInput("");
+          }
+        }}
+      >
+        Send
+      </button>
     </div>
   );
 }

@@ -1,44 +1,44 @@
-import { useState, useEffect } from "react";
-import { io, Socket } from "socket.io-client";
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL = "http://localhost:4000";
+const socket = io("http://localhost:4000");
 
-export function useSocket(room: string) {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [messages, setMessages] = useState<string[]>([]);
+export const useSocket = (room: string) => {
+  const [messages, setMessages] = useState<{ sender: string; message: string }[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // ✅ Connect to Socket.IO server
-    const newSocket = io(SOCKET_SERVER_URL);
-    setSocket(newSocket);
+    socket.emit("join room", room);
 
-    // ✅ Join the specified room
-    if (room) {
-      newSocket.emit("join room", room);
-      console.log(`📌 Joined room: ${room}`);
-    }
+    socket.on("connect", () => {
+      setIsConnected(true);
+      console.log("✅ Connected to server");
+    });
 
-    // ✅ Listen for incoming messages
-    newSocket.on("chat message", (message) => {
-      setMessages((prev) => [...prev, message]);
+    socket.on("user joined", (message) => {
+      console.log(message);
+      setMessages((prev) => [...prev, { sender: "system", message }]);
+    });
+
+    socket.on("chat message", (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+
+    socket.on("user left", (message) => {
+      console.log(message);
+      setMessages((prev) => [...prev, { sender: "system", message }]);
     });
 
     return () => {
-      // ✅ Leave the room when component unmounts
-      if (room) {
-        newSocket.emit("leave room", room);
-        console.log(`🚪 Left room: ${room}`);
-      }
-      newSocket.disconnect();
+      socket.off("user joined");
+      socket.off("chat message");
+      socket.off("user left");
     };
   }, [room]);
 
-  // ✅ Function to send messages
   const sendMessage = (message: string) => {
-    if (socket && room) {
-      socket.emit("chat message", { room, message });
-    }
+    socket.emit("chat message", { room, message });
   };
 
-  return { messages, sendMessage };
-}
+  return { messages, sendMessage, isConnected };
+};
